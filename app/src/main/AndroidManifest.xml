@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 차량용 앱 -->
+    <uses-feature android:name="android.hardware.type.automotive" android:required="true" />
+
+    <!-- Pleos Vehicle SDK: 조회 권한만 사용합니다(차량 제어 없음). 권한 최소화 원칙. -->
+    <uses-permission android:name="pleos.car.permission.CAR_SEATS" />   <!-- 좌석 탑승 -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />   <!-- 계기판 누적거리(Odometer) -->
+    <uses-permission android:name="pleos.car.permission.CAR_MILEAGE" /> <!-- 일부 SDK 버전의 Odometer 권한 -->
+    <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />  <!-- 배터리·연료 잔량, 효율 -->
+
+    <!-- 여행일지: 내비 목적지·경유지 도착(NaviHelper), 출발·정차 위치(FusedLocation) -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+    <uses-permission android:name="pleos.car.permission.FUSED_LOCATION" />
+
+    <!-- AAOS 표준: 기어 상태 -->
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+
+    <application
+        android:name=".GachitanApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Gachitan">
+
+        <!-- CCP(로터리 컨트롤러) 미지원 앱 선언. 모든 조작은 터치만으로 완결됩니다. -->
+        <meta-data
+            android:name="com.hmg.rotary.ROTARY_SUPPORTED"
+            android:value="false" />
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode"
+            android:windowSoftInputMode="adjustResize">
+
+            <!-- 주행 중에도 화면을 유지합니다(Distraction Optimized).
+                 단, 주행 중 화면에는 조작 요소가 없고 탑승 인원·거리만 표시합니다. -->
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

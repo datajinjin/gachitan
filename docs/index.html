@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>같이 탄 만큼 · 정산</title>
+<style>
+  /* 앱과 같은 색 역할: 짙은 회색 바탕, 강조색 하나(청록), 금액은 색이 아니라 크기로 강조합니다. */
+  :root { --bg:#0f1316; --panel:#161b1f; --fill:#1f262b; --line:#2c343a; --text:#eceff1; --dim:#a6b0b8; --accent:#5fc4a8; --on-accent:#07211a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:17px/1.55 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; font-variant-numeric: tabular-nums; }
+  main { max-width:520px; margin:0 auto; padding:28px 20px 56px; }
+  .state { color:var(--dim); font-size:15px; margin:0 0 6px; }
+  h1 { font-size:24px; margin:0; font-weight:600; }
+  .hero { font-size:44px; font-weight:600; letter-spacing:-0.5px; margin:18px 0 2px; }
+  .sub { color:var(--dim); margin:0; }
+  h2 { font-size:15px; margin:32px 0 8px; color:var(--dim); font-weight:600; }
+  .row { display:flex; justify-content:space-between; gap:12px; align-items:baseline; padding:12px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  .amount { font-weight:600; font-size:20px; white-space:nowrap; }
+  .me { background:var(--fill); border-radius:12px; padding:12px 14px; border:0; }
+  .route span + span::before { content:" → "; color:var(--dim); }
+  .dim { color:var(--dim); font-size:15px; }
+  a.btn { display:block; text-align:center; margin-top:14px; padding:16px; border-radius:12px; background:var(--accent); color:var(--on-accent); font-weight:700; text-decoration:none; font-size:18px; }
+  .empty { margin-top:96px; text-align:center; color:var(--dim); }
+  footer { margin-top:40px; color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<main id="app"><p class="empty">정산 내용을 여는 중…</p></main>
+<script>
+/*
+ * 같이 탄 만큼 여행일지 뷰어
+ * 주소의 '#d=' 뒤에 담긴 압축 데이터를 이 브라우저 안에서만 풉니다.
+ * '#' 뒤 내용은 서버로 전송되지 않으므로 이름·금액이 어디에도 저장되지 않습니다.
+ * 데이터 형식은 앱의 core/JourneyShare.json()과 같습니다.
+ */
+function b64urlToBytes(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function inflateRaw(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return await new Response(stream).text();
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+const won = n => Math.round(n).toLocaleString("ko-KR") + "원";
+const km = n => (n >= 100 ? Math.round(n).toLocaleString("ko-KR") : Number(n).toFixed(1)) + "km";
+
+/** 개인용(k:"p"): 그 사람 몫과 그 사람이 주고받을 송금만 담겨 있습니다. */
+function renderPersonal(d) {
+  const bal = d.b || 0;
+  let h = `<p class="state">${esc(d.t)} · ${d.dn || 1}일</p><h1>${esc(d.n)}님 정산</h1>`;
+  h += `<p class="hero">${bal < 0 ? won(-bal) : bal > 0 ? won(bal) : "0원"}</p>`;
+  h += `<p class="sub">${bal < 0 ? "보낼 돈" : bal > 0 ? "받을 돈" : "주고받을 돈이 없어요"}</p>`;
+  const x = d.x || [];
+  if (x.length) {
+    h += `<h2>송금</h2>`;
+    for (const [other, amount, dir, link] of x) {
+      const what = dir > 0 ? `${esc(other)}님께 보내기` : `${esc(other)}님께 받기`;
+      h += `<div class="row"><span>${what}</span><span class="amount">${won(amount)}</span></div>`;
+      if (dir > 0 && typeof link === "string" && link.startsWith("https://toss.me/")) {
+        h += `<a class="btn" href="${esc(link)}">토스로 ${won(amount)} 보내기</a>`;
+      }
+    }
+  }
+  h += `<h2>내역</h2>`;
+  h += `<div class="row"><span>탑승</span><span>${km(d.km || 0)}</span></div>`;
+  h += `<div class="row"><span>차량 비용 몫</span><span>${won(d.f || 0)}</span></div>`;
+  if (d.e) h += `<div class="row"><span>공동 경비 몫</span><span>${won(d.e)}</span></div>`;
+  if (d.pd) h += `<div class="row"><span>내가 낸 돈</span><span>${won(d.pd)}</span></div>`;
+  h += `<footer>같이 탄 만큼 · 차량의 좌석 신호와 주행거리로 나눈 금액입니다. 에너지비는 추정값입니다. 이 내용은 어떤 서버에도 저장되지 않습니다.</footer>`;
+  return h;
+}
+
+/** 전체 내역(함께 확인할 때만): 모든 사람의 이름·금액·경로가 담겨 있습니다. */
+function render(d) {
+  const m = d.m || [];
+  const name = i => (i >= 0 && i < m.length) ? esc(m[i]) : "?";
+  let h = `<p class="state">${(d.d || []).length}일 · ${km(d.tk)}</p><h1>${esc(d.t)}</h1>`;
+  h += `<p class="sub">차량 ${won(d.tf)}${d.te ? " · 공동 경비 " + won(d.te) : ""}</p>`;
+  const transfers = d.x || [];
+  h += `<h2>${transfers.length ? "송금 " + transfers.length + "번으로 정리" : "주고받을 돈이 없어요"}</h2>`;
+  for (const [f, t, a] of transfers) {
+    h += `<div class="row"><span>${name(f)} → ${name(t)}</span><span class="amount">${won(a)}</span></div>`;
+  }
+  h += `<h2>사람별</h2>`;
+  for (const [i, k, fuel, exp, paid, bal] of d.p || []) {
+    const label = bal > 0 ? "받을 돈 " + won(bal) : bal < 0 ? "보낼 돈 " + won(-bal) : "정산 끝";
+    h += `<div class="row"><span>${name(i)}<br><span class="dim">${km(k)} · 차량 ${won(fuel)} · 경비 ${won(exp)}</span></span><span class="amount">${label}</span></div>`;
+  }
+  if ((d.d || []).length) {
+    h += `<h2>날짜별</h2>`;
+    for (const day of d.d) {
+      const route = (day.r || []).map(r => `<span>${esc(r)}</span>`).join("");
+      h += `<div class="row"><span>${day.n}일차 <span class="dim">${esc(day.dt)}</span>${route ? `<br><span class="dim route">${route}</span>` : ""}</span><span>${won(day.c)}</span></div>`;
+    }
+  }
+  if ((d.e || []).length) {
+    h += `<h2>공동 경비</h2>`;
+    for (const [label, amount, payer] of d.e) {
+      h += `<div class="row"><span>${esc(label)} <span class="dim">· ${name(payer)} 결제</span></span><span>${won(amount)}</span></div>`;
+    }
+  }
+  h += `<footer>같이 탄 만큼 · 에너지비는 추정값입니다. 이 내용은 어떤 서버에도 저장되지 않습니다.</footer>`;
+  return h;
+}
+
+async function main() {
+  const app = document.getElementById("app");
+  const params = new URLSearchParams(location.hash.slice(1));
+  const data = params.get("d");
+  if (!data) { app.innerHTML = `<p class="empty">차 안의 QR 코드를 찍어서 열어 주세요.</p>`; return; }
+  try {
+    const d = JSON.parse(await inflateRaw(b64urlToBytes(data)));
+    document.title = `${d.t} · 같이 탄 만큼`;
+    app.innerHTML = d.k === "p" ? renderPersonal(d) : render(d);
+  } catch (e) {
+    app.innerHTML = `<p class="empty">정산 내용을 열 수 없어요. 최신 브라우저에서 다시 열어 주세요.<br><span class="dim">${esc(e.message || e)}</span></p>`;
+  }
+}
+
+if (typeof document !== "undefined") main();
+if (typeof module !== "undefined") module.exports = { render, renderPersonal, b64urlToBytes, inflateRaw };
+</script>
+</body>
+</html>

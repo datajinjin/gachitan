@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 위에서 본 실내: 탑승 좌석만 블루, 빈 좌석은 선. 앱 화면의 좌석 배치와 같은 언어입니다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#00000000" android:strokeColor="#FF8A96A5" android:strokeWidth="2"
+        android:pathData="M38,26 L70,26 Q80,26 80,36 L80,72 Q80,82 70,82 L38,82 Q28,82 28,72 L28,36 Q28,26 38,26 Z" />
+    <path android:fillColor="#FF2463EB" android:pathData="M35,34 h16 v16 h-16 Z" />
+    <path android:fillColor="#FF2463EB" android:pathData="M57,34 h16 v16 h-16 Z" />
+    <path android:fillColor="#FF2463EB" android:pathData="M35,58 h10 v16 h-10 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF8A96A5" android:strokeWidth="1.5" android:pathData="M49.75,58.75 h8.5 v14.5 h-8.5 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF8A96A5" android:strokeWidth="1.5" android:pathData="M63.75,58.75 h8.5 v14.5 h-8.5 Z" />
+</vector>
